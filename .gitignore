@@ -1,0 +1,42 @@
+### Entorno virtual
+.venv/
+venv/
+
+### Archivos de base de datos locales
+banco.db
+*.sqlite3
+
+### Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+### Distribuciones y builds
+build/
+dist/
+*.egg-info/
+
+### Archivos de entorno / secretos
+.env
+.env.*
+
+### Cachés y cobertura
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage*
+
+### Logs
+*.log
+
+### Configuración de IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+### Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
