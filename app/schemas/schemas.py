@@ -37,6 +37,7 @@ class UsuarioResponse(BaseModel):
     id: int
     nombre: str
     email: str
+    foto_perfil: str | None = None
     creado_en: datetime
 
     model_config = {"from_attributes": True}
@@ -57,9 +58,28 @@ class CuentaResponse(BaseModel):
     saldo: float
     deuda: float
     limite_credito: float
+    limite_gasto_mensual: float
     creada_en: datetime
 
     model_config = {"from_attributes": True}
+
+
+class LimiteGastoSetRequest(BaseModel):
+    limite: float
+    tipo: TipoCuenta | None = None  # si es None, aplica a débito y crédito
+
+    @field_validator("limite")
+    @classmethod
+    def limite_no_negativo(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("El límite debe ser mayor o igual a 0")
+        return v
+
+
+class LimiteGastoInfoResponse(BaseModel):
+    tipo: TipoCuenta
+    limite_gasto_mensual: float
+    gasto_mes_actual: float
 
 
 # ─── Transacciones ────────────────────────────────────────────────────────────

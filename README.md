@@ -64,6 +64,7 @@ Documentación interactiva: `http://localhost:8000/docs`
 | POST | `/auth/registro` | Registrar nuevo usuario |
 | POST | `/auth/login` | Iniciar sesión |
 | GET | `/auth/me` | Perfil del usuario autenticado |
+| PATCH | `/auth/me` | Actualizar perfil (nombre, contraseña, foto) |
 
 ### Cuentas
 | Método | Ruta | Descripción |
@@ -71,6 +72,8 @@ Documentación interactiva: `http://localhost:8000/docs`
 | GET | `/cuentas/` | Ver cuentas débito y crédito |
 | GET | `/cuentas/mi-qr` | Datos para QR de transferencia |
 | GET | `/cuentas/movimientos` | Historial de movimientos |
+| GET | `/cuentas/limite-gasto` | Ver límite de gasto mensual y gasto del mes |
+| PUT | `/cuentas/limite-gasto` | Configurar límite de gasto mensual |
 
 ### Operaciones
 | Método | Ruta | Descripción |
@@ -93,6 +96,14 @@ En un dispositivo físico usa la IP local de tu PC:
 ```
 http://192.168.X.X:8000
 ```
+
+---
+
+## Archivos `media/` (foto de perfil)
+
+- Las fotos de perfil se guardan en `media/perfiles/`.
+- Se sirven como archivos estáticos en la ruta `/media/...` (por ejemplo: `http://localhost:8000/media/perfiles/<archivo>.jpg`).
+- La carpeta `media/` está ignorada por git (solo se versiona `media/.gitkeep`).
 
 ---
 
