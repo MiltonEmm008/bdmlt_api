@@ -143,6 +143,34 @@ Devuelve las cuentas bancarias del usuario autenticado (débito y crédito).
 
 ---
 
+### `GET /cuentas/mi-qr`
+Devuelve el número de cuenta de débito, el nombre del usuario autenticado y la fecha/hora en que se generaron los datos. Se usa para que la app Android genere el código QR para recibir transferencias (el backend solo provee los datos, la app genera el QR visualmente).
+
+**Headers requeridos:** `Authorization: Bearer <token>`
+
+**Sin body.**
+
+**Respuesta exitosa `200`:**
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `numero_cuenta` | string | Número de la cuenta de débito |
+| `nombre` | string | Nombre del usuario |
+| `fecha` | string | Fecha y hora en que se enviaron los datos: día/mes/año y hora en formato 24h (minutos, segundos). Ejemplo: `07/03/2025 14:30:45` |
+
+```json
+{
+  "numero_cuenta": "400012345678901234",
+  "nombre": "Milton Martínez",
+  "fecha": "07/03/2025 14:30:45"
+}
+```
+
+**Errores posibles:**
+- `401` — Token inválido o expirado
+- `404` — No tienes cuenta de débito
+
+---
+
 ### `GET /cuentas/movimientos`
 Devuelve el historial de movimientos del usuario autenticado, ordenado del más reciente al más antiguo.
 
@@ -397,6 +425,7 @@ Lista todos los servicios disponibles para pago. Útil para poblar un selector e
 | POST | `/auth/login` | ❌ | Iniciar sesión |
 | GET | `/auth/me` | ✅ | Perfil del usuario autenticado |
 | GET | `/cuentas/` | ✅ | Ver cuentas débito y crédito |
+| GET | `/cuentas/mi-qr` | ✅ | Datos para QR de transferencia |
 | GET | `/cuentas/movimientos` | ✅ | Historial de movimientos |
 | POST | `/operaciones/transferencia` | ✅ | Transferir dinero a otro usuario |
 | POST | `/operaciones/pago-servicio` | ✅ | Pagar CFE, Infinitum, Telcel, Agua o Gas |

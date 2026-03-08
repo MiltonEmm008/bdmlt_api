@@ -44,6 +44,12 @@ class UsuarioResponse(BaseModel):
 
 # ─── Cuenta ───────────────────────────────────────────────────────────────────
 
+class MiQRResponse(BaseModel):
+    numero_cuenta: str
+    nombre: str
+    fecha: str  # Día/mes/año hora:minutos:segundos (24h), ej. "07/03/2025 14:30:45"
+
+
 class CuentaResponse(BaseModel):
     id: int
     numero: str

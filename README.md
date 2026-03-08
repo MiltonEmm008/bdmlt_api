@@ -69,6 +69,7 @@ Documentación interactiva: `http://localhost:8000/docs`
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/cuentas/` | Ver cuentas débito y crédito |
+| GET | `/cuentas/mi-qr` | Datos para QR de transferencia |
 | GET | `/cuentas/movimientos` | Historial de movimientos |
 
 ### Operaciones
