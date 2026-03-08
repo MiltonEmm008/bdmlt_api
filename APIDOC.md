@@ -172,7 +172,7 @@ Devuelve el número de cuenta de débito, el nombre del usuario autenticado y la
 ---
 
 ### `GET /cuentas/movimientos`
-Devuelve el historial de movimientos del usuario autenticado, ordenado del más reciente al más antiguo.
+Devuelve el historial de movimientos del usuario autenticado. Permite ordenar por fecha, filtrar por tipo de movimiento y limitar la cantidad de resultados.
 
 **Headers requeridos:** `Authorization: Bearer <token>`
 
@@ -180,10 +180,15 @@ Devuelve el historial de movimientos del usuario autenticado, ordenado del más 
 | Parámetro | Tipo | Default | Descripción |
 |-----------|------|---------|-------------|
 | `limite` | integer | `20` | Número de movimientos a retornar (mínimo 1, máximo 100) |
+| `orden_fecha` | string | `desc` | Orden por fecha: `asc` (más antiguos primero) o `desc` (más recientes primero) |
+| `tipo` | string (enum) | — | Filtrar por tipo de movimiento. Valores: `transferencia`, `pago_servicio`, `pago_credito`, `deposito`. Si se omite, se devuelven todos los tipos. |
 
-**Ejemplo:**
+**Ejemplos:**
 ```
 GET /cuentas/movimientos?limite=50
+GET /cuentas/movimientos?orden_fecha=asc
+GET /cuentas/movimientos?tipo=transferencia
+GET /cuentas/movimientos?limite=30&orden_fecha=desc&tipo=pago_servicio
 ```
 
 **Respuesta exitosa `200`:**

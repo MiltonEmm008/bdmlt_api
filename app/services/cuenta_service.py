@@ -24,18 +24,25 @@ def obtener_mi_qr(usuario: Usuario, db: Session) -> dict:
     return {"numero_cuenta": cuenta_debito.numero, "nombre": usuario.nombre, "fecha": fecha}
 
 
-def obtener_movimientos(usuario: Usuario, db: Session, limite: int = 20) -> list[Transaccion]:
+def obtener_movimientos(
+    usuario: Usuario,
+    db: Session,
+    limite: int = 20,
+    orden_fecha: str = "desc",
+    tipo: TipoTransaccion | None = None,
+) -> list[Transaccion]:
     cuenta_ids = [c.id for c in usuario.cuentas]
-    return (
-        db.query(Transaccion)
-        .filter(
-            (Transaccion.cuenta_origen_id.in_(cuenta_ids))
-            | (Transaccion.cuenta_destino_id.in_(cuenta_ids))
-        )
-        .order_by(Transaccion.creada_en.desc())
-        .limit(limite)
-        .all()
+    q = db.query(Transaccion).filter(
+        (Transaccion.cuenta_origen_id.in_(cuenta_ids))
+        | (Transaccion.cuenta_destino_id.in_(cuenta_ids))
     )
+    if tipo is not None:
+        q = q.filter(Transaccion.tipo == tipo)
+    if orden_fecha == "asc":
+        q = q.order_by(Transaccion.creada_en.asc())
+    else:
+        q = q.order_by(Transaccion.creada_en.desc())
+    return q.limit(limite).all()
 
 
 def realizar_transferencia(datos: TransferenciaRequest, usuario: Usuario, db: Session) -> Transaccion:
