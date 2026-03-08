@@ -1,6 +1,8 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
@@ -64,8 +66,27 @@ def _crear_usuario_default() -> None:
         db.close()
 
 
+def _migraciones_sqlite() -> None:
+    """Ajustes mínimos de esquema para SQLite sin usar Alembic."""
+    with engine.begin() as conn:
+        columnas_usuarios = {
+            row[1] for row in conn.execute(text("PRAGMA table_info(usuarios)")).fetchall()
+        }
+        if "foto_perfil" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN foto_perfil VARCHAR(255)"))
+
+        columnas_cuentas = {
+            row[1] for row in conn.execute(text("PRAGMA table_info(cuentas)")).fetchall()
+        }
+        if "limite_gasto_mensual" not in columnas_cuentas:
+            conn.execute(
+                text("ALTER TABLE cuentas ADD COLUMN limite_gasto_mensual FLOAT NOT NULL DEFAULT 0.0")
+            )
+
+
 # Crea las tablas en la DB si no existen
 Base.metadata.create_all(bind=engine)
+_migraciones_sqlite()
 _crear_usuario_default()
 
 app = FastAPI(
@@ -73,6 +94,9 @@ app = FastAPI(
     description="API REST para la app bancaria escolar",
     version="1.0.0",
 )
+
+# Archivos estáticos para fotos de perfil
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # CORS abierto para desarrollo local — ajustar en producción
 app.add_middleware(

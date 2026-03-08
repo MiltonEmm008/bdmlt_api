@@ -92,6 +92,7 @@ Devuelve la información del usuario actualmente autenticado.
   "id": 1,
   "nombre": "Milton Martínez",
   "email": "milton@correo.com",
+  "foto_perfil": "media/perfiles/2f9c1b0e0e9c4c3aa0f4f2f6a9b7c1d2.jpg",
   "creado_en": "2025-03-07T10:30:00"
 }
 ```
@@ -101,6 +102,31 @@ Devuelve la información del usuario actualmente autenticado.
 - `404` — Usuario no encontrado
 
 ---
+
+### `PATCH /auth/me`
+Actualiza los datos del usuario autenticado. Permite:
+- Cambiar `nombre`
+- Cambiar contraseña (requiere `password_actual` y `password_nueva`)
+- Subir `foto` de perfil (se guarda en `media/perfiles/` y se expone en `/media/...`)
+
+**Headers requeridos:** `Authorization: Bearer <token>`
+
+**Content-Type:** `multipart/form-data`
+
+**Campos (form-data):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `nombre` | string | ❌ | Nuevo nombre del usuario |
+| `password_actual` | string | ❌ | Contraseña actual (requerida si envías `password_nueva`) |
+| `password_nueva` | string | ❌ | Nueva contraseña (mínimo 6 caracteres) |
+| `foto` | file | ❌ | Imagen (`.jpg`, `.png`, `.webp`). Máximo 5MB |
+
+**Respuesta exitosa `200`:** devuelve el usuario actualizado (mismo formato que `GET /auth/me`).
+
+**Errores posibles:**
+- `400` — Datos inválidos (por ejemplo: falta `password_actual`, formato de imagen no soportado, foto vacía, >5MB, contraseña nueva muy corta)
+- `401` — Token inválido o expirado, o contraseña actual incorrecta
+- `404` — Usuario no encontrado
 
 ## `/cuentas` — Cuentas bancarias
 
@@ -119,6 +145,7 @@ Devuelve las cuentas bancarias del usuario autenticado (débito y crédito).
     "numero": "400012345678901234",
     "tipo": "debito",
     "saldo": 1000.0,
+    "limite_gasto_mensual": 0.0,
     "deuda": 0.0,
     "limite_credito": 0.0,
     "creada_en": "2025-03-07T10:30:00"
@@ -128,6 +155,7 @@ Devuelve las cuentas bancarias del usuario autenticado (débito y crédito).
     "numero": "500098765432109876",
     "tipo": "credito",
     "saldo": 0.0,
+    "limite_gasto_mensual": 0.0,
     "deuda": 0.0,
     "limite_credito": 5000.0,
     "creada_en": "2025-03-07T10:30:00"
@@ -172,7 +200,7 @@ Devuelve el número de cuenta de débito, el nombre del usuario autenticado y la
 ---
 
 ### `GET /cuentas/movimientos`
-Devuelve el historial de movimientos del usuario autenticado, ordenado del más reciente al más antiguo.
+Devuelve el historial de movimientos del usuario autenticado. Permite ordenar por fecha, filtrar por tipo de movimiento y limitar la cantidad de resultados.
 
 **Headers requeridos:** `Authorization: Bearer <token>`
 
@@ -180,10 +208,15 @@ Devuelve el historial de movimientos del usuario autenticado, ordenado del más 
 | Parámetro | Tipo | Default | Descripción |
 |-----------|------|---------|-------------|
 | `limite` | integer | `20` | Número de movimientos a retornar (mínimo 1, máximo 100) |
+| `orden_fecha` | string | `desc` | Orden por fecha: `asc` (más antiguos primero) o `desc` (más recientes primero) |
+| `tipo` | string (enum) | — | Filtrar por tipo de movimiento. Valores: `transferencia`, `pago_servicio`, `pago_credito`, `deposito`. Si se omite, se devuelven todos los tipos. |
 
-**Ejemplo:**
+**Ejemplos:**
 ```
 GET /cuentas/movimientos?limite=50
+GET /cuentas/movimientos?orden_fecha=asc
+GET /cuentas/movimientos?tipo=transferencia
+GET /cuentas/movimientos?limite=30&orden_fecha=desc&tipo=pago_servicio
 ```
 
 **Respuesta exitosa `200`:**
@@ -236,12 +269,71 @@ GET /cuentas/movimientos?limite=50
 
 ---
 
+### `GET /cuentas/limite-gasto`
+Devuelve el límite de gasto mensual y el gasto del mes actual **por cuenta** (débito y crédito).
+
+**Headers requeridos:** `Authorization: Bearer <token>`
+
+**Sin body.**
+
+**Respuesta exitosa `200`:**
+```json
+[
+  {
+    "tipo": "debito",
+    "limite_gasto_mensual": 2000.0,
+    "gasto_mes_actual": 750.0
+  },
+  {
+    "tipo": "credito",
+    "limite_gasto_mensual": 1500.0,
+    "gasto_mes_actual": 450.0
+  }
+]
+```
+
+**Errores posibles:**
+- `401` — Token inválido o expirado
+- `404` — No tienes cuentas
+
+---
+
+### `PUT /cuentas/limite-gasto`
+Configura el límite de gasto mensual. Si `limite` es `0`, el límite queda desactivado.  
+Si no envías `tipo`, el límite se aplica a **débito y crédito**.
+
+**Headers requeridos:** `Authorization: Bearer <token>`
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `limite` | float | ✅ | Límite mensual (0 desactiva, no puede ser negativo) |
+| `tipo` | string (enum) | ❌ | `debito` o `credito`. Si se omite, aplica a ambas |
+
+**Ejemplos:**
+```json
+{ "limite": 2000.0 }
+```
+```json
+{ "limite": 1500.0, "tipo": "credito" }
+```
+
+**Respuesta exitosa `200`:** devuelve el mismo formato que `GET /cuentas/limite-gasto`.
+
+**Errores posibles:**
+- `400` — Límite inválido
+- `401` — Token inválido o expirado
+- `404` — No tienes cuentas
+
 ## `/operaciones` — Operaciones bancarias
 
 ### `POST /operaciones/transferencia`
 Transfiere dinero desde la cuenta de débito del usuario autenticado hacia la cuenta de débito de otro usuario.
 
 **Headers requeridos:** `Authorization: Bearer <token>`
+
+**Headers opcionales en respuesta:**
+- `X-Gasto-Advertencia`: se envía cuando el movimiento hace que alcances el 90% de tu límite de gasto mensual.
 
 **Body (JSON):**
 | Campo | Tipo | Requerido | Descripción |
@@ -279,6 +371,7 @@ Transfiere dinero desde la cuenta de débito del usuario autenticado hacia la cu
 - `400` — Saldo insuficiente
 - `400` — No puedes transferirte a ti mismo
 - `400` — Monto debe ser mayor a 0
+- `403` — Límite de gasto mensual alcanzado
 - `401` — Token inválido o expirado
 - `404` — No tienes cuenta de débito
 - `404` — Cuenta destino no encontrada
@@ -290,6 +383,9 @@ Paga un servicio doméstico o de telecomunicaciones.
 Por defecto se usa el saldo de la cuenta de **débito**, pero opcionalmente puedes **cargarlo a la tarjeta de crédito** (aumentando la deuda hasta el límite disponible).
 
 **Headers requeridos:** `Authorization: Bearer <token>`
+
+**Headers opcionales en respuesta:**
+- `X-Gasto-Advertencia`: se envía cuando el movimiento hace que alcances el 90% de tu límite de gasto mensual.
 
 **Body (JSON):**
 | Campo | Tipo | Requerido | Descripción |
@@ -348,6 +444,7 @@ Por defecto se usa el saldo de la cuenta de **débito**, pero opcionalmente pued
 - `400` — Saldo insuficiente (cuando se usa cuenta de débito)
 - `400` — Límite de crédito insuficiente (cuando se usa tarjeta de crédito)
 - `400` — Monto debe ser mayor a 0
+- `403` — Límite de gasto mensual alcanzado
 - `401` — Token inválido o expirado
 - `404` — No tienes cuenta de débito
 - `404` — No tienes cuenta de crédito (cuando se usa tarjeta de crédito)
@@ -424,9 +521,12 @@ Lista todos los servicios disponibles para pago. Útil para poblar un selector e
 | POST | `/auth/registro` | ❌ | Registrar nuevo usuario |
 | POST | `/auth/login` | ❌ | Iniciar sesión |
 | GET | `/auth/me` | ✅ | Perfil del usuario autenticado |
+| PATCH | `/auth/me` | ✅ | Actualizar perfil (nombre, contraseña, foto) |
 | GET | `/cuentas/` | ✅ | Ver cuentas débito y crédito |
 | GET | `/cuentas/mi-qr` | ✅ | Datos para QR de transferencia |
 | GET | `/cuentas/movimientos` | ✅ | Historial de movimientos |
+| GET | `/cuentas/limite-gasto` | ✅ | Ver límite de gasto mensual y gasto del mes |
+| PUT | `/cuentas/limite-gasto` | ✅ | Configurar límite de gasto mensual |
 | POST | `/operaciones/transferencia` | ✅ | Transferir dinero a otro usuario |
 | POST | `/operaciones/pago-servicio` | ✅ | Pagar CFE, Infinitum, Telcel, Agua o Gas |
 | POST | `/operaciones/pago-credito` | ✅ | Pagar deuda de tarjeta de crédito |

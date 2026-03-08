@@ -31,6 +31,10 @@ htmlcov/
 ### Logs
 *.log
 
+### Archivos subidos por usuarios (media)
+media/**
+!media/.gitkeep
+
 ### Configuración de IDE / editor
 .vscode/
 .idea/

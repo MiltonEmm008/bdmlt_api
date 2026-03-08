@@ -45,6 +45,7 @@ class Usuario(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
+    foto_perfil: Mapped[str | None] = mapped_column(String(255), nullable=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     cuentas: Mapped[list["Cuenta"]] = relationship("Cuenta", back_populates="usuario")
@@ -57,6 +58,7 @@ class Cuenta(Base):
     numero: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     tipo: Mapped[TipoCuenta] = mapped_column(Enum(TipoCuenta))
     saldo: Mapped[float] = mapped_column(Float, default=0.0)
+    limite_gasto_mensual: Mapped[float] = mapped_column(Float, default=0.0)
     # Solo aplica para crédito: deuda actual y límite
     deuda: Mapped[float] = mapped_column(Float, default=0.0)
     limite_credito: Mapped[float] = mapped_column(Float, default=0.0)

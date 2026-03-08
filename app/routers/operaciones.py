@@ -1,5 +1,5 @@
 # app/routers/operaciones.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -19,21 +19,29 @@ router = APIRouter(prefix="/operaciones", tags=["Operaciones"])
 @router.post("/transferencia", response_model=TransaccionResponse, status_code=201)
 def transferencia(
     datos: TransferenciaRequest,
+    response: Response,
     usuario: Usuario = Depends(get_usuario_actual),
     db: Session = Depends(get_db),
 ):
     """Realiza una transferencia desde la cuenta débito del usuario a otra cuenta."""
-    return realizar_transferencia(datos, usuario, db)
+    transaccion, advertencia = realizar_transferencia(datos, usuario, db)
+    if advertencia:
+        response.headers["X-Gasto-Advertencia"] = advertencia
+    return transaccion
 
 
 @router.post("/pago-servicio", response_model=TransaccionResponse, status_code=201)
 def pago_servicio(
     datos: PagoServicioRequest,
+    response: Response,
     usuario: Usuario = Depends(get_usuario_actual),
     db: Session = Depends(get_db),
 ):
     """Paga un servicio (CFE, Infinitum, Telcel, Agua, Gas) desde la cuenta débito."""
-    return pagar_servicio(datos, usuario, db)
+    transaccion, advertencia = pagar_servicio(datos, usuario, db)
+    if advertencia:
+        response.headers["X-Gasto-Advertencia"] = advertencia
+    return transaccion
 
 
 @router.post("/pago-credito", response_model=TransaccionResponse, status_code=201)
