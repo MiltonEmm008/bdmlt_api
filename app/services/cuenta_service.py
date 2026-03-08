@@ -1,4 +1,6 @@
 # app/services/cuenta_service.py
+from datetime import datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,18 @@ from app.schemas.schemas import PagoCreditoRequest, PagoServicioRequest, Transfe
 
 def obtener_cuentas(usuario: Usuario, db: Session) -> list[Cuenta]:
     return db.query(Cuenta).filter(Cuenta.usuario_id == usuario.id).all()
+
+
+def obtener_mi_qr(usuario: Usuario, db: Session) -> dict:
+    cuenta_debito = (
+        db.query(Cuenta)
+        .filter(Cuenta.usuario_id == usuario.id, Cuenta.tipo == TipoCuenta.DEBITO)
+        .first()
+    )
+    if not cuenta_debito:
+        raise HTTPException(status_code=404, detail="No tienes cuenta de débito")
+    fecha = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    return {"numero_cuenta": cuenta_debito.numero, "nombre": usuario.nombre, "fecha": fecha}
 
 
 def obtener_movimientos(usuario: Usuario, db: Session, limite: int = 20) -> list[Transaccion]:
