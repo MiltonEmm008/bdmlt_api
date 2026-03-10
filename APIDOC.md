@@ -26,13 +26,23 @@ Registra un nuevo usuario en el sistema. Crea automáticamente una cuenta de dé
 | `nombre` | string | ✅ | Nombre completo del usuario |
 | `email` | string | ✅ | Correo electrónico (debe ser único) |
 | `password` | string | ✅ | Contraseña (mínimo 6 caracteres) |
+| `telefono` | string | ❌ | Teléfono de contacto del usuario |
+| `calle_numero` | string | ❌ | Calle y número del domicilio |
+| `colonia` | string | ❌ | Colonia del domicilio |
+| `ciudad` | string | ❌ | Ciudad del domicilio |
+| `codigo_postal` | string | ❌ | Código postal del domicilio |
 
 **Ejemplo de solicitud:**
 ```json
 {
   "nombre": "Milton Martínez",
   "email": "milton@correo.com",
-  "password": "mipassword123"
+  "password": "mipassword123",
+  "telefono": "5551234567",
+  "calle_numero": "Av. Siempre Viva 742",
+  "colonia": "Centro",
+  "ciudad": "CDMX",
+  "codigo_postal": "01000"
 }
 ```
 
@@ -76,6 +86,7 @@ Inicia sesión con credenciales existentes y devuelve un token de acceso.
 
 **Errores posibles:**
 - `401` — Credenciales incorrectas
+- `403` — La cuenta está desactivada
 
 ---
 
@@ -92,6 +103,12 @@ Devuelve la información del usuario actualmente autenticado.
   "id": 1,
   "nombre": "Milton Martínez",
   "email": "milton@correo.com",
+  "telefono": "5551234567",
+  "calle_numero": "Av. Siempre Viva 742",
+  "colonia": "Centro",
+  "ciudad": "CDMX",
+  "codigo_postal": "01000",
+  "activo": true,
   "foto_perfil": "media/perfiles/2f9c1b0e0e9c4c3aa0f4f2f6a9b7c1d2.jpg",
   "creado_en": "2025-03-07T10:30:00"
 }
@@ -100,12 +117,52 @@ Devuelve la información del usuario actualmente autenticado.
 **Errores posibles:**
 - `401` — Token inválido o expirado
 - `404` — Usuario no encontrado
+- `403` — La cuenta está desactivada
+
+---
+
+### `POST /auth/desactivar`
+Desactiva la cuenta de un usuario.  
+La cuenta **default** (`default@banco.com`) **no** se puede desactivar.  
+Una vez desactivada, la cuenta no puede iniciar sesión, no puede realizar operaciones ni recibir transferencias.
+
+> Nota: la cuenta no se elimina físicamente de la base de datos, solo se marca como inactiva para evitar inconsistencias con los movimientos históricos.
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `email` | string | ✅ | Correo electrónico de la cuenta a desactivar |
+| `password` | string | ✅ | Contraseña actual del usuario |
+| `confirmar_password` | string | ✅ | Debe coincidir con `password` |
+
+**Ejemplo de solicitud:**
+```json
+{
+  "email": "milton@correo.com",
+  "password": "mipassword123",
+  "confirmar_password": "mipassword123"
+}
+```
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "mensaje": "La cuenta se ha desactivado correctamente"
+}
+```
+
+**Errores posibles:**
+- `400` — La cuenta ya está desactivada o se intenta desactivar la cuenta default
+- `401` — Contraseña incorrecta
+- `404` — Usuario no encontrado
+
 
 ---
 
 ### `PATCH /auth/me`
 Actualiza los datos del usuario autenticado. Permite:
 - Cambiar `nombre`
+- Cambiar datos de contacto y domicilio (`telefono`, `calle_numero`, `colonia`, `ciudad`, `codigo_postal`)
 - Cambiar contraseña (requiere `password_actual` y `password_nueva`)
 - Subir `foto` de perfil (se guarda en `media/perfiles/` y se expone en `/media/...`)
 
@@ -117,6 +174,11 @@ Actualiza los datos del usuario autenticado. Permite:
 | Campo | Tipo | Requerido | Descripción |
 |-------|------|-----------|-------------|
 | `nombre` | string | ❌ | Nuevo nombre del usuario |
+| `telefono` | string | ❌ | Nuevo teléfono del usuario |
+| `calle_numero` | string | ❌ | Nueva calle y número del domicilio |
+| `colonia` | string | ❌ | Nueva colonia del domicilio |
+| `ciudad` | string | ❌ | Nueva ciudad del domicilio |
+| `codigo_postal` | string | ❌ | Nuevo código postal del domicilio |
 | `password_actual` | string | ❌ | Contraseña actual (requerida si envías `password_nueva`) |
 | `password_nueva` | string | ❌ | Nueva contraseña (mínimo 6 caracteres) |
 | `foto` | file | ❌ | Imagen (`.jpg`, `.png`, `.webp`). Máximo 5MB |
@@ -372,6 +434,7 @@ Transfiere dinero desde la cuenta de débito del usuario autenticado hacia la cu
 - `400` — No puedes transferirte a ti mismo
 - `400` — Monto debe ser mayor a 0
 - `403` — Límite de gasto mensual alcanzado
+- `403` — No puedes transferir a un usuario desactivado
 - `401` — Token inválido o expirado
 - `404` — No tienes cuenta de débito
 - `404` — Cuenta destino no encontrada
@@ -522,6 +585,7 @@ Lista todos los servicios disponibles para pago. Útil para poblar un selector e
 | POST | `/auth/login` | ❌ | Iniciar sesión |
 | GET | `/auth/me` | ✅ | Perfil del usuario autenticado |
 | PATCH | `/auth/me` | ✅ | Actualizar perfil (nombre, contraseña, foto) |
+| POST | `/auth/desactivar` | ❌ | Desactivar cuenta de usuario (no aplica a la cuenta default) |
 | GET | `/cuentas/` | ✅ | Ver cuentas débito y crédito |
 | GET | `/cuentas/mi-qr` | ✅ | Datos para QR de transferencia |
 | GET | `/cuentas/movimientos` | ✅ | Historial de movimientos |

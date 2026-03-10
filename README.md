@@ -61,10 +61,11 @@ Documentación interactiva: `http://localhost:8000/docs`
 ### Autenticación
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/auth/registro` | Registrar nuevo usuario |
+| POST | `/auth/registro` | Registrar nuevo usuario (incluye teléfono y dirección opcionales) |
 | POST | `/auth/login` | Iniciar sesión |
 | GET | `/auth/me` | Perfil del usuario autenticado |
-| PATCH | `/auth/me` | Actualizar perfil (nombre, contraseña, foto) |
+| PATCH | `/auth/me` | Actualizar perfil (nombre, contraseña, foto, teléfono y dirección) |
+| POST | `/auth/desactivar` | Desactivar la cuenta del usuario (requiere correo y confirmación de contraseña, la cuenta `default@banco.com` no se puede desactivar) |
 
 ### Cuentas
 | Método | Ruta | Descripción |

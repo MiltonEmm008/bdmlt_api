@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.models.models import Cuenta, TipoCuenta, Usuario
-from app.schemas.schemas import LoginRequest, RegistroRequest
+from app.schemas.schemas import DesactivarCuentaRequest, LoginRequest, RegistroRequest
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -34,6 +34,11 @@ def registrar_usuario(datos: RegistroRequest, db: Session) -> dict:
         nombre=datos.nombre,
         email=datos.email,
         hashed_password=hash_password(datos.password),
+        telefono=datos.telefono,
+        calle_numero=datos.calle_numero,
+        colonia=datos.colonia,
+        ciudad=datos.ciudad,
+        codigo_postal=datos.codigo_postal,
     )
     db.add(usuario)
     db.flush()  # obtenemos el id sin hacer commit aún
@@ -70,6 +75,12 @@ def login_usuario(datos: LoginRequest, db: Session) -> dict:
             detail="Credenciales incorrectas",
         )
 
+    if not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta está desactivada. No puedes iniciar sesión.",
+        )
+
     token = create_access_token({"sub": str(usuario.id)})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -86,8 +97,43 @@ def get_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = Depend
     usuario = db.query(Usuario).filter(Usuario.id == int(payload["sub"])).first()
     if not usuario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+    if not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta está desactivada.",
+        )
 
     return usuario
+
+
+def desactivar_usuario(datos: DesactivarCuentaRequest, db: Session) -> dict:
+    usuario = db.query(Usuario).filter(Usuario.email == datos.email).first()
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    if usuario.email == "default@banco.com":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La cuenta default no se puede desactivar",
+        )
+
+    if not verify_password(datos.password, usuario.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Contraseña incorrecta",
+        )
+
+    if not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La cuenta ya se encuentra desactivada",
+        )
+
+    usuario.activo = False
+    db.add(usuario)
+    db.commit()
+
+    return {"mensaje": "La cuenta se ha desactivado correctamente"}
 
 
 def actualizar_perfil_usuario(
@@ -95,12 +141,37 @@ def actualizar_perfil_usuario(
     db: Session,
     *,
     nombre: str | None = None,
+    telefono: str | None = None,
+    calle_numero: str | None = None,
+    colonia: str | None = None,
+    ciudad: str | None = None,
+    codigo_postal: str | None = None,
     password_actual: str | None = None,
     password_nueva: str | None = None,
     foto: UploadFile | None = None,
 ) -> Usuario:
     if nombre is not None and nombre.strip():
         usuario.nombre = nombre.strip()
+
+    if telefono is not None:
+        telefono = telefono.strip()
+        usuario.telefono = telefono or None
+
+    if calle_numero is not None:
+        calle_numero = calle_numero.strip()
+        usuario.calle_numero = calle_numero or None
+
+    if colonia is not None:
+        colonia = colonia.strip()
+        usuario.colonia = colonia or None
+
+    if ciudad is not None:
+        ciudad = ciudad.strip()
+        usuario.ciudad = ciudad or None
+
+    if codigo_postal is not None:
+        codigo_postal = codigo_postal.strip()
+        usuario.codigo_postal = codigo_postal or None
 
     if password_nueva is not None:
         if password_actual is None:

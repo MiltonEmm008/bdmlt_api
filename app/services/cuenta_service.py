@@ -110,6 +110,13 @@ def realizar_transferencia(
     if not cuenta_destino:
         raise HTTPException(status_code=404, detail="Cuenta destino no encontrada")
 
+    # No permitir transferencias a usuarios desactivados
+    if cuenta_destino.usuario and not cuenta_destino.usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes transferir a un usuario desactivado",
+        )
+
     if cuenta_origen.id == cuenta_destino.id:
         raise HTTPException(status_code=400, detail="No puedes transferirte a ti mismo")
 

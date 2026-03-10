@@ -1,7 +1,7 @@
 # app/schemas/schemas.py
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 from app.models.models import EstadoTransaccion, Servicio, TipoCuenta, TipoTransaccion
 
@@ -12,6 +12,11 @@ class RegistroRequest(BaseModel):
     nombre: str
     email: EmailStr
     password: str
+    telefono: str | None = None
+    calle_numero: str | None = None
+    colonia: str | None = None
+    ciudad: str | None = None
+    codigo_postal: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -26,6 +31,18 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class DesactivarCuentaRequest(BaseModel):
+    email: EmailStr
+    password: str
+    confirmar_password: str
+
+    @model_validator(mode="after")
+    def passwords_coinciden(self) -> "DesactivarCuentaRequest":
+        if self.confirmar_password != self.password:
+            raise ValueError("La confirmación de contraseña no coincide")
+        return self
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -37,6 +54,12 @@ class UsuarioResponse(BaseModel):
     id: int
     nombre: str
     email: str
+    telefono: str | None = None
+    calle_numero: str | None = None
+    colonia: str | None = None
+    ciudad: str | None = None
+    codigo_postal: str | None = None
+    activo: bool
     foto_perfil: str | None = None
     creado_en: datetime
 

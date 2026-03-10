@@ -46,6 +46,12 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
     foto_perfil: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    telefono: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    calle_numero: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    colonia: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ciudad: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    codigo_postal: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    activo: Mapped[bool] = mapped_column(default=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     cuentas: Mapped[list["Cuenta"]] = relationship("Cuenta", back_populates="usuario")
