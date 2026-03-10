@@ -74,6 +74,20 @@ def _migraciones_sqlite() -> None:
         }
         if "foto_perfil" not in columnas_usuarios:
             conn.execute(text("ALTER TABLE usuarios ADD COLUMN foto_perfil VARCHAR(255)"))
+        if "telefono" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN telefono VARCHAR(20)"))
+        if "calle_numero" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN calle_numero VARCHAR(255)"))
+        if "colonia" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN colonia VARCHAR(255)"))
+        if "ciudad" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN ciudad VARCHAR(100)"))
+        if "codigo_postal" not in columnas_usuarios:
+            conn.execute(text("ALTER TABLE usuarios ADD COLUMN codigo_postal VARCHAR(10)"))
+        if "activo" not in columnas_usuarios:
+            conn.execute(
+                text("ALTER TABLE usuarios ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+            )
 
         columnas_cuentas = {
             row[1] for row in conn.execute(text("PRAGMA table_info(cuentas)")).fetchall()
