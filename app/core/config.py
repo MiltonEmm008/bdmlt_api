@@ -3,15 +3,15 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    SECRET_KEY: str = "clavesecretajawjdnajwdajwda8182477583u2njnaj"
+    # Clave y JWT
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     DATABASE_URL: str = "sqlite:///./banco.db"
 
-    # ─── Soporte (Ollama vía OpenAI SDK) ──────────────────────────────────────
-    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
-    OLLAMA_API_KEY: str = "ollama"
-    OLLAMA_MODEL: str = "qwen2.5:3b"
+    # ─── Soporte (Gemini) ────────────────────────────────────────────────────
+    GEMINI_API_KEY: str
+    GEMINI_MODEL: str = "gemini-2.0-flash"
 
     # Memoria en RAM (ventana deslizante) para el chat de soporte
     SOPORTE_MAX_MENSAJES_POR_CHAT: int = 20

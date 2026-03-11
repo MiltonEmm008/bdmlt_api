@@ -3,9 +3,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass
+from functools import lru_cache
 
+import google.generativeai as genai
 from fastapi import HTTPException
-from openai import OpenAI
 
 from app.core.config import settings
 
@@ -33,8 +34,22 @@ ESTILO:
 """
 
 
-def _client() -> OpenAI:
-    return OpenAI(base_url=settings.OLLAMA_BASE_URL, api_key=settings.OLLAMA_API_KEY)
+@lru_cache(maxsize=1)
+def _gemini_model() -> genai.GenerativeModel:
+    """
+    Inicializa y cachea el cliente de Gemini usando la API key del .env.
+    """
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta configurar GEMINI_API_KEY en el archivo .env.",
+        )
+
+    genai.configure(api_key=settings.GEMINI_API_KEY)
+    return genai.GenerativeModel(
+        model_name=settings.GEMINI_MODEL,
+        system_instruction=_SYSTEM_PROMPT_BDMLT,
+    )
 
 
 def _cleanup() -> None:
@@ -90,15 +105,24 @@ def enviar_mensaje(*, session_id: str | None, message: str) -> tuple[str, str, i
     max_msgs = max(1, settings.SOPORTE_MAX_MENSAJES_POR_CHAT)
     windowed = state.messages[-max_msgs:]
 
-    try:
-        resp = _client().chat.completions.create(
-            model=settings.OLLAMA_MODEL,
-            messages=[{"role": "system", "content": _SYSTEM_PROMPT_BDMLT}] + windowed,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error consultando modelo local: {e}")
+    # Convertir historial a formato Gemini (user/model)
+    history_for_gemini = []
+    for m in windowed[:-1]:
+        role = "user" if m.get("role") == "user" else "model"
+        content = m.get("content") or ""
+        if content:
+            history_for_gemini.append({"role": role, "parts": [content]})
 
-    reply = resp.choices[0].message.content or ""
+    last_user_message = windowed[-1]["content"]
+
+    try:
+        model = _gemini_model()
+        chat = model.start_chat(history=history_for_gemini)
+        resp = chat.send_message(last_user_message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error consultando Gemini: {e}")
+
+    reply = resp.text or ""
     reply = _enforce_role(reply)
 
     state.messages.append({"role": "assistant", "content": reply})
@@ -118,8 +142,8 @@ def estado_soporte() -> dict:
     _cleanup()
     return {
         "status": "ok",
-        "model": settings.OLLAMA_MODEL,
-        "base_url": settings.OLLAMA_BASE_URL,
+        "provider": "gemini",
+        "model": settings.GEMINI_MODEL,
         "chats_en_ram": len(_conversations),
         "max_chats_en_ram": settings.SOPORTE_MAX_CHATS_EN_RAM,
         "max_mensajes_por_chat": settings.SOPORTE_MAX_MENSAJES_POR_CHAT,
