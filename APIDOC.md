@@ -577,6 +577,81 @@ Lista todos los servicios disponibles para pago. Útil para poblar un selector e
 
 ---
 
+## `/soporte` — Chat de soporte (BDMLT)
+
+Chat de soporte usando tu modelo local de Ollama (vía OpenAI SDK).  
+**Sin autenticación requerida.** La memoria vive en RAM y se limpia/recorta automáticamente.
+
+### `GET /soporte/health`
+Devuelve estado del módulo de soporte y configuración activa (modelo, base_url, límites).
+
+**Sin body.**
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "status": "ok",
+  "model": "qwen2.5:3b",
+  "base_url": "http://localhost:11434/v1",
+  "chats_en_ram": 2,
+  "max_chats_en_ram": 200,
+  "max_mensajes_por_chat": 20,
+  "ttl_segundos": 1800
+}
+```
+
+---
+
+### `POST /soporte/chat`
+Envía un mensaje al asistente de soporte BDMLT.  
+Si no envías `session_id`, se crea una conversación nueva y se regresa el `session_id` para continuar el hilo.
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `session_id` | string | ❌ | Identificador de conversación (si se omite, se crea uno nuevo) |
+| `message` | string | ✅ | Mensaje del usuario |
+
+**Ejemplo de solicitud (nueva conversación):**
+```json
+{
+  "message": "Hola, ¿cómo veo mis movimientos?"
+}
+```
+
+**Ejemplo de solicitud (continuar conversación):**
+```json
+{
+  "session_id": "c2c6d78e1c5b4a5b8d3d7f0d9df2b1a8",
+  "message": "¿Y puedo filtrar por transferencias?"
+}
+```
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "session_id": "c2c6d78e1c5b4a5b8d3d7f0d9df2b1a8",
+  "reply": "Para ver tus movimientos usa GET /cuentas/movimientos. Puedes filtrar con ?tipo=transferencia y ajustar limite/orden.",
+  "memory_messages": 6
+}
+```
+
+**Errores posibles:**
+- `422` — Body inválido (por ejemplo `message` vacío)
+- `500` — Error consultando el modelo local
+
+---
+
+### `DELETE /soporte/chat/{session_id}`
+Borra el historial en RAM de una sesión.
+
+**Sin body.**
+
+**Respuesta exitosa `200`:**
+```json
+{ "mensaje": "Chat 'c2c6d78e1c5b4a5b8d3d7f0d9df2b1a8' limpiado" }
+```
+
 ## Resumen de endpoints
 
 | Método | Endpoint | Auth | Descripción |
@@ -595,3 +670,6 @@ Lista todos los servicios disponibles para pago. Útil para poblar un selector e
 | POST | `/operaciones/pago-servicio` | ✅ | Pagar CFE, Infinitum, Telcel, Agua o Gas |
 | POST | `/operaciones/pago-credito` | ✅ | Pagar deuda de tarjeta de crédito |
 | GET | `/operaciones/servicios-disponibles` | ❌ | Listar servicios disponibles |
+| GET | `/soporte/health` | ❌ | Salud/config del chat de soporte |
+| POST | `/soporte/chat` | ❌ | Enviar mensaje al soporte BDMLT (con memoria) |
+| DELETE | `/soporte/chat/{session_id}` | ❌ | Limpiar memoria de una sesión de soporte |

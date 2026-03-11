@@ -158,3 +158,24 @@ class PagoCreditoRequest(BaseModel):
         if v <= 0:
             raise ValueError("El monto debe ser mayor a 0")
         return v
+
+
+# ─── Soporte (chat) ───────────────────────────────────────────────────────────
+
+class SoporteChatRequest(BaseModel):
+    session_id: str | None = None
+    message: str
+
+    @field_validator("message")
+    @classmethod
+    def mensaje_no_vacio(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("El mensaje no puede estar vacío")
+        return v
+
+
+class SoporteChatResponse(BaseModel):
+    session_id: str
+    reply: str
+    memory_messages: int
