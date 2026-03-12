@@ -48,6 +48,32 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class MensajeResponse(BaseModel):
+    mensaje: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
+    confirmar_password: str
+
+    @model_validator(mode="after")
+    def passwords_coinciden(self) -> "ResetPasswordRequest":
+        if self.confirmar_password != self.password:
+            raise ValueError("La confirmación de contraseña no coincide")
+        if len(self.password) < 6:
+            raise ValueError("La contraseña nueva debe tener al menos 6 caracteres")
+        return self
+
+
+class VerificarEmailRequest(BaseModel):
+    token: str
+
+
 # ─── Usuario ──────────────────────────────────────────────────────────────────
 
 class UsuarioResponse(BaseModel):

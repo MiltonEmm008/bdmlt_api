@@ -18,7 +18,9 @@ Authorization: Bearer <token>
 ## `/auth` — Autenticación
 
 ### `POST /auth/registro`
-Registra un nuevo usuario en el sistema. Crea automáticamente una cuenta de débito (con $1,000 de saldo inicial) y una cuenta de crédito (con límite de $5,000) para el usuario.
+Registra un nuevo usuario en el sistema. Crea automáticamente una cuenta de débito (con $1,000 de saldo inicial) y una cuenta de crédito (con límite de $5,000) para el usuario, pero deja la cuenta **desactivada** hasta que el usuario verifique su correo electrónico.
+
+Al registrarse se envía un correo de verificación con un enlace que contiene un token JWT válido por **60 minutos**. Al entrar al enlace, la cuenta se activa automáticamente.
 
 **Body (JSON):**
 | Campo | Tipo | Requerido | Descripción |
@@ -49,8 +51,7 @@ Registra un nuevo usuario en el sistema. Crea automáticamente una cuenta de dé
 **Respuesta exitosa `201`:**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+  "mensaje": "Usuario registrado correctamente. Revisa tu correo para verificar tu cuenta."
 }
 ```
 
@@ -189,6 +190,100 @@ Actualiza los datos del usuario autenticado. Permite:
 - `400` — Datos inválidos (por ejemplo: falta `password_actual`, formato de imagen no soportado, foto vacía, >5MB, contraseña nueva muy corta)
 - `401` — Token inválido o expirado, o contraseña actual incorrecta
 - `404` — Usuario no encontrado
+
+### `POST /auth/forgot-password`
+Inicia el flujo de recuperación de contraseña.  
+Siempre responde de forma genérica para no revelar si el correo existe.
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `email` | string (Email) | ✅ | Correo electrónico del usuario |
+
+**Comportamiento:**
+- Si el correo existe y la cuenta está activa, se envía un correo con un enlace para restablecer la contraseña.
+- El enlace contiene un token JWT válido por `PASSWORD_RESET_EXPIRE_MINUTES` (5 minutos por defecto).
+- Si el correo no existe o la cuenta no está activa, no se hace nada pero la respuesta es la misma.
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "mensaje": "Si el correo existe en el sistema, enviaremos un enlace de recuperación."
+}
+```
+
+---
+
+### `GET /auth/reset-password-form`
+Devuelve el HTML con el formulario para establecer una nueva contraseña.  
+El token JWT llega como querystring: `?token=...`
+
+- **Sin autenticación requerida.**
+- **Sin body.**
+
+El formulario envía internamente una solicitud `POST /auth/reset-password` con:
+- `token`
+- `password`
+- `confirmar_password`
+
+---
+
+### `POST /auth/reset-password`
+Actualiza la contraseña del usuario usando el token de recuperación.
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `token` | string | ✅ | Token JWT enviado al correo (válido por 5 minutos) |
+| `password` | string | ✅ | Nueva contraseña (mínimo 6 caracteres) |
+| `confirmar_password` | string | ✅ | Debe coincidir con `password` |
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "mensaje": "Contraseña actualizada correctamente"
+}
+```
+
+**Errores posibles:**
+- `400` — La confirmación de contraseña no coincide
+- `400` — La contraseña nueva debe tener al menos 6 caracteres
+- `400` — Enlace de recuperación inválido o expirado
+- `404` — Usuario no encontrado
+
+---
+
+### `GET /auth/verificar-email-form`
+Devuelve el HTML que verifica automáticamente el correo del usuario usando el token.  
+El token JWT llega como querystring: `?token=...`
+
+- **Sin autenticación requerida.**
+- **Sin body.**
+
+Al cargar la página, se hace una llamada interna a `POST /auth/verificar-email` para activar la cuenta y mostrar un mensaje de éxito o error.
+
+---
+
+### `POST /auth/verificar-email`
+Verifica el correo del usuario a partir de un token JWT enviado por correo y activa la cuenta.
+
+**Body (JSON):**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `token` | string | ✅ | Token JWT de verificación enviado al correo (válido por 60 minutos) |
+
+**Respuesta exitosa `200`:**
+```json
+{
+  "mensaje": "Cuenta verificada correctamente. Ya puedes iniciar sesión."
+}
+```
+
+**Errores posibles:**
+- `400` — Enlace de verificación inválido o expirado
+- `404` — Usuario no encontrado
+
+---
 
 ## `/cuentas` — Cuentas bancarias
 
@@ -656,10 +751,15 @@ Borra el historial en RAM de una sesión.
 
 | Método | Endpoint | Auth | Descripción |
 |--------|----------|------|-------------|
-| POST | `/auth/registro` | ❌ | Registrar nuevo usuario |
+| POST | `/auth/registro` | ❌ | Registrar nuevo usuario (envía correo de verificación) |
 | POST | `/auth/login` | ❌ | Iniciar sesión |
 | GET | `/auth/me` | ✅ | Perfil del usuario autenticado |
 | PATCH | `/auth/me` | ✅ | Actualizar perfil (nombre, contraseña, foto) |
+| POST | `/auth/forgot-password` | ❌ | Iniciar flujo de recuperación de contraseña (envía correo) |
+| GET | `/auth/reset-password-form` | ❌ | HTML para restablecer contraseña con token |
+| POST | `/auth/reset-password` | ❌ | Actualizar contraseña usando token de recuperación |
+| GET | `/auth/verificar-email-form` | ❌ | HTML que verifica automáticamente el correo con token |
+| POST | `/auth/verificar-email` | ❌ | Verificar correo y activar cuenta |
 | POST | `/auth/desactivar` | ❌ | Desactivar cuenta de usuario (no aplica a la cuenta default) |
 | GET | `/cuentas/` | ✅ | Ver cuentas débito y crédito |
 | GET | `/cuentas/mi-qr` | ✅ | Datos para QR de transferencia |

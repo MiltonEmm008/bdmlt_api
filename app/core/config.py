@@ -1,5 +1,5 @@
 # app/core/config.py
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,8 +18,19 @@ class Settings(BaseSettings):
     SOPORTE_MAX_CHATS_EN_RAM: int = 200
     SOPORTE_CHAT_TTL_SEGUNDOS: int = 60 * 30  # 30 min sin actividad -> se limpia
 
-    class Config:
-        env_file = ".env"
+    EMAIL_USER: str = "..."
+    EMAIL_PASSWORD: str = "..."
+    EMAIL_OWNER: str = "merp2067@gmail.com"
+
+    # ─── Recuperación de contraseña ─────────────────────────────────────────────
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 5
+    PASSWORD_RESET_BASE_URL: str = "http://localhost:8000"
+
+    # ─── Verificación de correo ────────────────────────────────────────────────
+    EMAIL_VERIFICATION_EXPIRE_MINUTES: int = 60
+    EMAIL_VERIFICATION_BASE_URL: str = "http://localhost:8000"
+
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 settings = Settings()
