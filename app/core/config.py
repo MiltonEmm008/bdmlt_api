@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     PASSWORD_RESET_EXPIRE_MINUTES: int = 5
     PASSWORD_RESET_BASE_URL: str = "http://localhost:8000"
 
+    # ─── Verificación de correo ────────────────────────────────────────────────
+    EMAIL_VERIFICATION_EXPIRE_MINUTES: int = 60
+    EMAIL_VERIFICATION_BASE_URL: str = "http://localhost:8000"
+
     model_config = SettingsConfigDict(env_file=".env")
+
 
 settings = Settings()

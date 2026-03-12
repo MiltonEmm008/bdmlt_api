@@ -16,8 +16,10 @@ from app.core.database import get_db
 from app.core.security import (
     create_access_token,
     create_password_reset_token,
+    create_email_verification_token,
     decode_access_token,
     decode_password_reset_token,
+    decode_email_verification_token,
     hash_password,
     verify_password,
 )
@@ -49,6 +51,7 @@ def registrar_usuario(datos: RegistroRequest, db: Session) -> dict:
         colonia=datos.colonia,
         ciudad=datos.ciudad,
         codigo_postal=datos.codigo_postal,
+        activo=False,
     )
     db.add(usuario)
     db.flush()  # obtenemos el id sin hacer commit aún
@@ -73,8 +76,15 @@ def registrar_usuario(datos: RegistroRequest, db: Session) -> dict:
     db.commit()
     db.refresh(usuario)
 
-    token = create_access_token({"sub": str(usuario.id)})
-    return {"access_token": token, "token_type": "bearer"}
+    token_verificacion = create_email_verification_token(usuario.id)
+    enlace_verificacion = (
+        f"{settings.EMAIL_VERIFICATION_BASE_URL}/auth/verificar-email-form?token={token_verificacion}"
+    )
+    _enviar_correo_verificacion(usuario.email, enlace_verificacion)
+
+    return {
+        "mensaje": "Usuario registrado correctamente. Revisa tu correo para verificar tu cuenta."
+    }
 
 
 def login_usuario(datos: LoginRequest, db: Session) -> dict:
@@ -268,6 +278,42 @@ def _enviar_correo_reset_password(destinatario: str, enlace: str) -> None:
         pass
 
 
+def _enviar_correo_verificacion(destinatario: str, enlace: str) -> None:
+    remitente = settings.EMAIL_USER
+    password = settings.EMAIL_PASSWORD
+    if not remitente or not password:
+        return
+
+    context = ssl.create_default_context()
+
+    asunto = "Verificación de correo - Banco BDMLT"
+    cuerpo = (
+        "Gracias por registrarte en Banco BDMLT.\n\n"
+        "Para activar tu cuenta, por favor haz clic en el siguiente enlace "
+        f"(válido por {settings.EMAIL_VERIFICATION_EXPIRE_MINUTES} minutos):\n"
+        f"{enlace}\n\n"
+        "Si no creaste esta cuenta, puedes ignorar este correo.\n\n"
+        "Atentamente,\n"
+        "Soporte Banco BDMLT"
+    )
+
+    headers = [
+        f"From: Soporte BDMLT <{remitente}>",
+        f"To: {destinatario}",
+        f"Subject: {asunto}",
+        "Content-Type: text/plain; charset=utf-8",
+    ]
+    mensaje = "\r\n".join(headers) + "\r\n\r\n" + cuerpo
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(remitente, password)
+            server.sendmail(remitente, [destinatario], mensaje.encode("utf-8"))
+    except Exception:
+        # No romper el flujo si falla el correo
+        pass
+
+
 def solicitar_reset_password(email: str, db: Session) -> None:
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
     if not usuario or not usuario.activo:
@@ -310,3 +356,28 @@ def resetear_password(token: str, nueva_password: str, confirmar_password: str, 
     db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente"}
+
+
+def verificar_email(token: str, db: Session) -> dict:
+    user_id = decode_email_verification_token(token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Enlace de verificación inválido o expirado",
+        )
+
+    usuario = db.query(Usuario).filter(Usuario.id == user_id).first()
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    if usuario.activo:
+        return {"mensaje": "La cuenta ya se encuentra verificada."}
+
+    usuario.activo = True
+    db.add(usuario)
+    db.commit()
+
+    return {"mensaje": "Cuenta verificada correctamente. Ya puedes iniciar sesión."}

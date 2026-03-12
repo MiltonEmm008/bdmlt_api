@@ -48,6 +48,10 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class MensajeResponse(BaseModel):
+    mensaje: str
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -64,6 +68,10 @@ class ResetPasswordRequest(BaseModel):
         if len(self.password) < 6:
             raise ValueError("La contraseña nueva debe tener al menos 6 caracteres")
         return self
+
+
+class VerificarEmailRequest(BaseModel):
+    token: str
 
 
 # ─── Usuario ──────────────────────────────────────────────────────────────────

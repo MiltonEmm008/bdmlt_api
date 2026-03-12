@@ -13,6 +13,8 @@ from app.schemas.schemas import (
     RegistroRequest,
     ResetPasswordRequest,
     TokenResponse,
+    VerificarEmailRequest,
+    MensajeResponse,
     UsuarioResponse,
 )
 from app.services.auth_service import (
@@ -23,14 +25,18 @@ from app.services.auth_service import (
     registrar_usuario,
     resetear_password,
     solicitar_reset_password,
+    verificar_email,
 )
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
+BASE_DIR = Path(__file__).resolve().parent.parent  # app/
+VIEWS_DIR = BASE_DIR / "views"
 
-@router.post("/registro", response_model=TokenResponse, status_code=201)
+
+@router.post("/registro", response_model=MensajeResponse, status_code=201)
 def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
-    """Registra un nuevo usuario y devuelve un token de acceso."""
+    """Registra un nuevo usuario, lo deja desactivado y envía un correo de verificación."""
     return registrar_usuario(datos, db)
 
 
@@ -109,7 +115,7 @@ def reset_password_form():
 
     El token JWT llega como querystring: ?token=...
     """
-    html_path = Path("reset_password.html")
+    html_path = VIEWS_DIR / "reset_password.html"
     return FileResponse(html_path)
 
 
@@ -119,3 +125,22 @@ def reset_password(datos: ResetPasswordRequest, db: Session = Depends(get_db)):
     Actualiza la contraseña del usuario usando el token de recuperación.
     """
     return resetear_password(datos.token, datos.password, datos.confirmar_password, db)
+
+
+@router.get("/verificar-email-form")
+def verificar_email_form():
+    """
+    Devuelve el HTML que verifica automáticamente el correo del usuario usando el token.
+
+    El token JWT llega como querystring: ?token=...
+    """
+    html_path = VIEWS_DIR / "verify_email.html"
+    return FileResponse(html_path)
+
+
+@router.post("/verificar-email", response_model=MensajeResponse)
+def verificar_email_endpoint(datos: VerificarEmailRequest, db: Session = Depends(get_db)):
+    """
+    Verifica el correo del usuario a partir de un token JWT enviado por correo.
+    """
+    return verificar_email(datos.token, db)
