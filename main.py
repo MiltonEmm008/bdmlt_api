@@ -7,7 +7,7 @@ from sqlalchemy import text
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.models.models import Cuenta, TipoCuenta, Usuario
-from app.routers import auth, cuentas, operaciones
+from app.routers import auth, cuentas, operaciones, soporte
 
 
 def _crear_usuario_default() -> None:
@@ -125,6 +125,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(cuentas.router)
 app.include_router(operaciones.router)
+app.include_router(soporte.router)
 
 
 @app.get("/", tags=["Root"])
