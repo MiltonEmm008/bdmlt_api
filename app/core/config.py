@@ -1,5 +1,5 @@
 # app/core/config.py
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,8 +18,10 @@ class Settings(BaseSettings):
     SOPORTE_MAX_CHATS_EN_RAM: int = 200
     SOPORTE_CHAT_TTL_SEGUNDOS: int = 60 * 30  # 30 min sin actividad -> se limpia
 
-    class Config:
-        env_file = ".env"
+    EMAIL_USER: str = "..."
+    EMAIL_PASSWORD: str = "..."
+    EMAIL_OWNER: str = "merp2067@gmail.com"
 
+    model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
