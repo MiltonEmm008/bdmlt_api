@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str = "..."
     EMAIL_OWNER: str = "merp2067@gmail.com"
 
+    # ─── Recuperación de contraseña ─────────────────────────────────────────────
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 5
+    PASSWORD_RESET_BASE_URL: str = "http://localhost:8000"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()

@@ -1,12 +1,17 @@
 # app/routers/auth.py
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.schemas import (
     DesactivarCuentaRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     RegistroRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UsuarioResponse,
 )
@@ -16,6 +21,8 @@ from app.services.auth_service import (
     get_usuario_actual,
     login_usuario,
     registrar_usuario,
+    resetear_password,
+    solicitar_reset_password,
 )
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -80,3 +87,35 @@ def actualizar_perfil(
         password_nueva=password_nueva,
         foto=foto,
     )
+
+
+@router.post("/forgot-password")
+def forgot_password(datos: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Inicia el flujo de recuperación de contraseña.
+
+    Siempre responde de forma genérica para no revelar si el correo existe.
+    """
+    solicitar_reset_password(datos.email, db)
+    return {
+        "mensaje": "Si el correo existe en el sistema, enviaremos un enlace de recuperación."
+    }
+
+
+@router.get("/reset-password-form")
+def reset_password_form():
+    """
+    Devuelve el HTML con el formulario para establecer una nueva contraseña.
+
+    El token JWT llega como querystring: ?token=...
+    """
+    html_path = Path("reset_password.html")
+    return FileResponse(html_path)
+
+
+@router.post("/reset-password")
+def reset_password(datos: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Actualiza la contraseña del usuario usando el token de recuperación.
+    """
+    return resetear_password(datos.token, datos.password, datos.confirmar_password, db)

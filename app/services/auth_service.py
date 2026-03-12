@@ -1,6 +1,8 @@
 # app/services/auth_service.py
 import os
 import random
+import smtplib
+import ssl
 import string
 import uuid
 from pathlib import Path
@@ -9,8 +11,16 @@ from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    create_password_reset_token,
+    decode_access_token,
+    decode_password_reset_token,
+    hash_password,
+    verify_password,
+)
 from app.models.models import Cuenta, TipoCuenta, Usuario
 from app.schemas.schemas import DesactivarCuentaRequest, LoginRequest, RegistroRequest
 
@@ -221,3 +231,82 @@ def actualizar_perfil_usuario(
     db.commit()
     db.refresh(usuario)
     return usuario
+
+
+def _enviar_correo_reset_password(destinatario: str, enlace: str) -> None:
+    remitente = settings.EMAIL_USER
+    password = settings.EMAIL_PASSWORD
+    if not remitente or not password:
+        return
+
+    context = ssl.create_default_context()
+
+    asunto = "Recuperación de contraseña - Banco BDMLT"
+    cuerpo = (
+        "Has solicitado restablecer tu contraseña en Banco BDMLT.\n\n"
+        f"Por favor haz clic en el siguiente enlace (válido por {settings.PASSWORD_RESET_EXPIRE_MINUTES} minutos):\n"
+        f"{enlace}\n\n"
+        "Si no solicitaste este cambio, puedes ignorar este correo.\n\n"
+        "Atentamente,\n"
+        "Soporte Banco BDMLT"
+    )
+
+    headers = [
+        f"From: Soporte BDMLT <{remitente}>",
+        f"To: {destinatario}",
+        f"Subject: {asunto}",
+        "Content-Type: text/plain; charset=utf-8",
+    ]
+    mensaje = "\r\n".join(headers) + "\r\n\r\n" + cuerpo
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(remitente, password)
+            server.sendmail(remitente, [destinatario], mensaje.encode("utf-8"))
+    except Exception:
+        # No romper el flujo si falla el correo
+        pass
+
+
+def solicitar_reset_password(email: str, db: Session) -> None:
+    usuario = db.query(Usuario).filter(Usuario.email == email).first()
+    if not usuario or not usuario.activo:
+        # Respuesta silenciosa para no filtrar existencia de cuentas
+        return
+
+    token = create_password_reset_token(usuario.email)
+    enlace = f"{settings.PASSWORD_RESET_BASE_URL}/auth/reset-password-form?token={token}"
+    _enviar_correo_reset_password(usuario.email, enlace)
+
+
+def resetear_password(token: str, nueva_password: str, confirmar_password: str, db: Session) -> dict:
+    if nueva_password != confirmar_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La confirmación de contraseña no coincide",
+        )
+    if len(nueva_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña nueva debe tener al menos 6 caracteres",
+        )
+
+    email = decode_password_reset_token(token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Enlace de recuperación inválido o expirado",
+        )
+
+    usuario = db.query(Usuario).filter(Usuario.email == email).first()
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    usuario.hashed_password = hash_password(nueva_password)
+    db.add(usuario)
+    db.commit()
+
+    return {"mensaje": "Contraseña actualizada correctamente"}
