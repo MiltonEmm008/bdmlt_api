@@ -2,7 +2,7 @@
 .venv/
 venv/
 
-### Archivos de base de datos locales
+### Archivos de base de datos locales (legacy)
 banco.db
 *.sqlite3
 
@@ -20,7 +20,6 @@ dist/
 
 ### Archivos de entorno / secretos
 .env
-.env.*
 
 ### Cachés y cobertura
 .pytest_cache/
@@ -31,9 +30,9 @@ htmlcov/
 ### Logs
 *.log
 
-### Archivos subidos por usuarios (media)
-media/**
-!media/.gitkeep
+### Archivos subidos por usuarios (legacy - ahora usa Supabase Storage)
+# media/**
+# !media/.gitkeep
 
 ### Configuración de IDE / editor
 .vscode/

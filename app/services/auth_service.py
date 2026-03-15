@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.storage import subir_foto_perfil
 from app.core.security import (
     create_access_token,
     create_password_reset_token,
@@ -212,10 +213,6 @@ def actualizar_perfil_usuario(
         usuario.hashed_password = hash_password(password_nueva)
 
     if foto is not None:
-        # Guardar en media/perfiles/
-        media_dir = Path("media") / "perfiles"
-        media_dir.mkdir(parents=True, exist_ok=True)
-
         _, ext = os.path.splitext(foto.filename or "")
         ext = (ext or "").lower()
         if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
@@ -224,18 +221,30 @@ def actualizar_perfil_usuario(
                 detail="Formato de imagen no soportado. Usa jpg, png o webp",
             )
 
-        nombre_archivo = f"{uuid.uuid4().hex}{ext}"
-        ruta_relativa = str(Path("media") / "perfiles" / nombre_archivo)
-        ruta_destino = media_dir / nombre_archivo
-
         contenido = foto.file.read()
         if not contenido:
             raise HTTPException(status_code=400, detail="Archivo de foto vacío")
         if len(contenido) > 5 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="La foto no puede exceder 5MB")
 
-        ruta_destino.write_bytes(contenido)
-        usuario.foto_perfil = ruta_relativa
+        nombre_archivo = f"{uuid.uuid4().hex}{ext}"
+        content_type = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }.get(ext, "image/jpeg")
+
+        if settings.usa_supabase_storage:
+            usuario.foto_perfil = subir_foto_perfil(
+                contenido, nombre_archivo, content_type=content_type
+            )
+        else:
+            media_dir = Path("media") / "perfiles"
+            media_dir.mkdir(parents=True, exist_ok=True)
+            ruta_relativa = str(Path("media") / "perfiles" / nombre_archivo)
+            (media_dir / nombre_archivo).write_bytes(contenido)
+            usuario.foto_perfil = ruta_relativa
 
     db.add(usuario)
     db.commit()

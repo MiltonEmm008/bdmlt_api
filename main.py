@@ -1,9 +1,12 @@
 # main.py
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.models.models import Cuenta, TipoCuenta, Usuario
@@ -100,7 +103,8 @@ def _migraciones_sqlite() -> None:
 
 # Crea las tablas en la DB si no existen
 Base.metadata.create_all(bind=engine)
-_migraciones_sqlite()
+if "sqlite" in settings.DATABASE_URL:
+    _migraciones_sqlite()
 _crear_usuario_default()
 
 app = FastAPI(
@@ -109,8 +113,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Archivos estáticos para fotos de perfil
-app.mount("/media", StaticFiles(directory="media"), name="media")
+# Archivos estáticos para fotos de perfil (rutas locales; con Supabase las fotos son URLs)
+if Path("media").exists():
+    app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # CORS abierto para desarrollo local — ajustar en producción
 app.add_middleware(

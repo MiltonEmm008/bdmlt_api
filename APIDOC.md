@@ -1,7 +1,7 @@
 # Banco Simulado — Documentación de Endpoints
 
-Base URL: `http://localhost:3000`  
-Documentación interactiva: `http://localhost:3000/docs`
+Base URL: `http://localhost:8000`  
+Documentación interactiva: `http://localhost:8000/docs`
 
 ---
 
@@ -110,7 +110,7 @@ Devuelve la información del usuario actualmente autenticado.
   "ciudad": "CDMX",
   "codigo_postal": "01000",
   "activo": true,
-  "foto_perfil": "media/perfiles/2f9c1b0e0e9c4c3aa0f4f2f6a9b7c1d2.jpg",
+  "foto_perfil": "https://seewuomzwhkpqxehtjia.supabase.co/storage/v1/object/public/fotos_perfil/2f9c1b0e0e9c4c3aa0f4f2f6a9b7c1d2.jpg",
   "creado_en": "2025-03-07T10:30:00"
 }
 ```
@@ -165,7 +165,7 @@ Actualiza los datos del usuario autenticado. Permite:
 - Cambiar `nombre`
 - Cambiar datos de contacto y domicilio (`telefono`, `calle_numero`, `colonia`, `ciudad`, `codigo_postal`)
 - Cambiar contraseña (requiere `password_actual` y `password_nueva`)
-- Subir `foto` de perfil (se guarda en `media/perfiles/` y se expone en `/media/...`)
+- Subir `foto` de perfil (se guarda en Supabase Storage y se devuelve URL pública completa)
 
 **Headers requeridos:** `Authorization: Bearer <token>`
 
